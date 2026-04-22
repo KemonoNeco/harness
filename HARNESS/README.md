@@ -61,7 +61,9 @@ Scope tags are **documentation-only today** — there's no runtime to enforce th
    cat IDENTITY.md SOUL.md USER.md BOUNDARIES.md MEMORY.md > /tmp/system-prompt.md
    ```
 
-   Paste that into Claude Code as a custom system prompt (or save as `AGENTS.md` if you're using a Claude Code workspace). HTML-comment metadata lines are harmless for the model — the future manifest loader will strip them automatically.
+   Paste that into Claude Code as a custom system prompt. HTML-comment metadata lines are harmless for the model — the future manifest loader will strip them automatically.
+
+   **Or, to use Harness as pure prompt instructions** with any agent that doesn't auto-discover project files (Cursor, Codex CLI, Aider, a plain chat model), feed [../AGENTS.md](../AGENTS.md) as the system prompt instead. It's an instructional document that tells the reading agent to load the five soul files in order, honor scope tags, and follow the memory append-only contract — the same contract `CLAUDE.md` delivers to Claude Code. No concatenation required.
 
 4. **Start writing memory entries.** When something notable happens, append an entry to `memory/daily/YYYY-MM-DD.md` following the schema in [memory/FORMAT.md](memory/FORMAT.md). Use real ISO-timestamped IDs from day one — when the retrieval layer lands, those entries become the corpus.
 
@@ -96,7 +98,7 @@ Full spec in [memory/FORMAT.md](memory/FORMAT.md).
 These belong to later cuts. Listed here so it's obvious why they're missing:
 
 - **`soul.toml` manifest** + assembler script — loads files in declared order, strips scope comments, emits a system prompt. Next cut after this one.
-- **`AGENTS.md`** — OpenClaw's boot-narration + workspace-etiquette file. When the manifest lands, AGENTS.md returns as pure instructional content (platform formatting, group-chat etiquette, heartbeat rules). Until then, seed its prescriptive content into SOUL.md if you want.
+- **Full `AGENTS.md` with boot narration + workspace etiquette** — the instructional core now ships at [../AGENTS.md](../AGENTS.md) (loader, scope tags, memory contract, "don't regress" list). Still deferred: boot-narration prose, platform-specific formatting rules, group-chat etiquette, and heartbeat directives. Those return once the `soul.toml` manifest lands and SOUL.md anchors stabilize.
 - **`HEARTBEAT.md`** — paired with the daemon's scheduler. No scheduler today, no heartbeat file.
 - **`TOOLS.md`** — local infra config (hostnames, ports, API creds). Not soul content — belongs in a sibling concern under `.harness/` or a separate vault-external file so it doesn't leak into the system prompt.
 - **`BOOTSTRAP.md`** — OpenClaw's elegant first-run ritual (agent interviews the user and populates the soul files). Needs a boot system that can delete-after-use. Re-evaluate with the manifest.
