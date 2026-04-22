@@ -84,6 +84,13 @@ def build_zip(out: Path) -> None:
         for rel, abs_p in entries:
             zi = zipfile.ZipInfo(filename=rel, date_time=CONST_TIME)
             zi.compress_type = zipfile.ZIP_STORED
+            # create_system defaults to 0 (MS-DOS) on Windows and 3 (Unix)
+            # on Linux — pin it so the archive bytes match across OSes.
+            zi.create_system = 3
+            # Pin the version fields too; ZipInfo's defaults are 20 but
+            # being explicit removes one more "might drift" surface.
+            zi.create_version = 20
+            zi.extract_version = 20
             # Preserve executable bit for .sh hooks; else mode 0o644.
             zi.external_attr = (
                 (0o755 if rel.endswith(".sh") else 0o644) << 16
