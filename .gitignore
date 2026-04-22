@@ -1,0 +1,19 @@
+# Claude Code personal state
+.claude/settings.local.json
+.claude/worktrees/
+
+# Obsidian per-user workspace state (keep shared config: app.json, appearance.json, core-plugins.json, graph.json)
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+.obsidian/workspaces.json
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*~
+*.swp
+*.swo
+
+# Temp / scratch
+*.tmp
+*.bak
