@@ -1,0 +1,14 @@
+{
+  "name": "harness",
+  "version": "0.1.0",
+  "description": "Loads the Harness soul bundle into every Cowork session and enforces the append-only memory contract.",
+  "author": {
+    "name": "KemonoNeco",
+    "url": "https://github.com/KemonoNeco/harness"
+  },
+  "homepage": "https://github.com/KemonoNeco/harness",
+  "repository": "https://github.com/KemonoNeco/harness",
+  "keywords": ["harness", "soul", "obsidian", "cowork", "memory"],
+  "skills": ["./skills/new-memory-entry"],
+  "hooks": "./hooks/hooks.json"
+}
