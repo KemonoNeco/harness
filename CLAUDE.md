@@ -71,7 +71,7 @@ Body (2-6 sentences).
 Don't build these without talking to the user first — they're deferred by design, not by oversight:
 
 - `soul.toml` manifest + assembler (next logical cut)
-- `AGENTS.md` boot narration + workspace etiquette
+- Full `AGENTS.md` with boot narration + workspace etiquette. The instructional core now ships at [AGENTS.md](AGENTS.md) (loader, scope tags, memory contract, don't-regress list); boot narration, platform-specific formatting, group-chat etiquette, and heartbeat directives are still deferred until `soul.toml` lands.
 - `HEARTBEAT.md`, `TOOLS.md`, `BOOTSTRAP.md`
 - Distillation job (stub spec in `HARNESS/memory/DISTILL.md`)
 - `ZonePolicy` enforcement
@@ -93,6 +93,12 @@ Full rationale in [HARNESS/README.md](HARNESS/README.md) §"Intentionally not sh
 - Default branch on the remote is `main`. Local `master` was used for the initial bootstrap commit and then rebased onto the API-created init commit on `main`.
 - Pushing directly to `main` is blocked by policy — always work on a feature branch and open a PR.
 - Soul-file commits should be single-purpose: one commit per meaningful change. Memory writes should each be their own commit so git revert works cleanly.
+
+## Using as pure prompt instructions (other agents)
+
+For any agent or model that doesn't automatically read this file — Cursor, Codex CLI, Aider, a plain chat API call, a custom harness — feed [AGENTS.md](AGENTS.md) as the system prompt. It's the cross-agent equivalent of this file: prose directives that tell the reading agent to load the five soul files in order, honor `[scope: X]` tags, follow the memory append-only contract, and respect the same "don't regress" architectural invariants listed here.
+
+AGENTS.md is itself the system prompt — no `cat` step, no assembler. The reading agent uses it to orient, then walks the markdown links into the soul files on its own. The live soul files remain the single source of truth; AGENTS.md does not duplicate their content, it points at them.
 
 ## Reference material
 
