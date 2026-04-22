@@ -94,26 +94,6 @@ Full rationale in [HARNESS/README.md](HARNESS/README.md) §"Intentionally not sh
 - Pushing directly to `main` is blocked by policy — always work on a feature branch and open a PR.
 - Soul-file commits should be single-purpose: one commit per meaningful change. Memory writes should each be their own commit so git revert works cleanly.
 
-## Loading into Claude Cowork
-
-Harness ships a Cowork plugin at [plugin/](plugin/) that auto-loads the soul bundle into every Cowork session opened against this repo — no manual `cat`, no pre-assembled `SYSTEM_PROMPT.md`, no commit of a regenerated bundle. The live soul files are the single source of truth; the plugin reads them at session start every time.
-
-Install once:
-
-```bash
-claude plugin install ./plugin
-```
-
-What the plugin delivers:
-
-1. **Soul injection.** A `UserPromptSubmit` hook ([plugin/hooks/inject-soul.sh](plugin/hooks/inject-soul.sh)) cats [HARNESS/IDENTITY.md](HARNESS/IDENTITY.md), [HARNESS/SOUL.md](HARNESS/SOUL.md), [HARNESS/USER.md](HARNESS/USER.md), [HARNESS/BOUNDARIES.md](HARNESS/BOUNDARIES.md), [HARNESS/MEMORY.md](HARNESS/MEMORY.md) on the first prompt of each session and returns them as `additionalContext`. Idempotent per session via a marker file under `${CLAUDE_PLUGIN_DATA}/injected-sessions/`. Fail-open — if any file is missing, the hook emits nothing rather than breaking the session.
-2. **Memory contract enforcement.** A `PreToolUse` hook ([plugin/hooks/enforce-memory-append-only.sh](plugin/hooks/enforce-memory-append-only.sh)) on `Edit`/`Write` blocks any mutation of a past `<!-- id: ... -->` entry under `HARNESS/memory/` — corrections must use `supersedes:` per [FORMAT.md](HARNESS/memory/FORMAT.md). Also refuses writes to `FORMAT.md` / `DISTILL.md` themselves.
-3. **`new-memory-entry` skill.** [plugin/skills/new-memory-entry/SKILL.md](plugin/skills/new-memory-entry/SKILL.md) scaffolds a well-formed entry — tags, ISO-8601 id, scope, optional `supersedes:`, correct append-not-overwrite shape.
-
-Plugin-scoped instructions live in [plugin/CLAUDE.md](plugin/CLAUDE.md). It's auto-injected alongside this file when the plugin is installed, and instructs the model to treat the soul bundle as its operating prompt and honour BOUNDARIES scope tags.
-
-The soul files are never regenerated or committed in derived form. Edit them freely; next session, the plugin picks up your changes.
-
 ## Reference material
 
 - [HARNESS_Research.md](HARNESS_Research.md) — full architectural design, every subsystem, every deferred decision explained.
