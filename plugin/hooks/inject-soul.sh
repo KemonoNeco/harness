@@ -19,9 +19,37 @@ if [[ -z "${input}" ]]; then
   emit_empty
 fi
 
-# Extract session_id and cwd from the hook input JSON. Tolerate absence.
-session_id="$(printf '%s' "${input}" | sed -n 's/.*"session_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1)"
-cwd="$(printf '%s' "${input}" | sed -n 's/.*"cwd"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1)"
+# Parse the hook input JSON robustly via python. Pretty-printed input,
+# escaped quotes, and null values all confound sed; python handles them.
+# If python is missing, fail open — we can't reliably identify the session.
+py=""
+if command -v python3 >/dev/null 2>&1; then
+  py="python3"
+elif command -v python >/dev/null 2>&1; then
+  py="python"
+else
+  emit_empty
+fi
+
+parsed="$(printf '%s' "${input}" | "${py}" -c '
+import json, sys, base64
+try:
+    d = json.load(sys.stdin)
+except Exception:
+    sys.exit(0)
+def b(x):
+    return base64.b64encode((x or "").encode("utf-8")).decode("ascii")
+print(b(d.get("session_id") or ""))
+print(b(d.get("cwd") or ""))
+' 2>/dev/null || true)"
+
+[[ -z "${parsed}" ]] && emit_empty
+
+decode_line() {
+  printf '%s' "${parsed}" | awk -v n="$1" 'NR==n{print}' | base64 -d 2>/dev/null || true
+}
+session_id="$(decode_line 1)"
+cwd="$(decode_line 2)"
 
 if [[ -z "${session_id:-}" ]]; then
   emit_empty
@@ -29,8 +57,11 @@ fi
 
 # Resolve soul root. Prefer explicit cwd from input; fall back to PWD.
 root="${cwd:-${PWD}}"
-# JSON may double-escape backslashes on Windows paths; normalise.
+# Normalise Windows paths: collapse double-escaped backslashes, then convert
+# the remaining backslashes to forward slashes so bash glob/test operators
+# behave consistently.
 root="${root//\\\\/\\}"
+root="${root//\\//}"
 
 # Per-session idempotency marker.
 data_dir="${CLAUDE_PLUGIN_DATA:-${root}/.claude/harness-plugin-data}"
@@ -61,30 +92,15 @@ preamble=$'### Harness soul bundle (auto-injected)\n\nThe following five files a
 bundle="$(cat "${files[@]}")"
 combined="${preamble}${bundle}"
 
-# JSON-escape the combined string. Use python if present (reliable on any
-# platform); fall back to a sed pipeline that handles the common cases.
-escape_json() {
-  if command -v python3 >/dev/null 2>&1; then
-    python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()), end="")'
-  elif command -v python >/dev/null 2>&1; then
-    python -c 'import json,sys; sys.stdout.write(json.dumps(sys.stdin.read()))'
-  else
-    # Minimal escaping: backslash, quote, control chars.
-    sed -e 's/\\/\\\\/g' \
-        -e 's/"/\\"/g' \
-        -e ':a;N;$!ba;s/\n/\\n/g' \
-        -e 's/\r/\\r/g' \
-        -e 's/\t/\\t/g' \
-      | awk 'BEGIN{printf "\""} {printf "%s", $0} END{printf "\""}'
-  fi
-}
-
-escaped="$(printf '%s' "${combined}" | escape_json)"
+# JSON-escape via python (already proven available above).
+escaped="$(printf '%s' "${combined}" | "${py}" -c 'import json,sys; sys.stdout.write(json.dumps(sys.stdin.read()))' 2>/dev/null || true)"
 if [[ -z "${escaped}" ]]; then
   emit_empty
 fi
 
-# Mark session as injected only after we know we have content to return.
-: > "${marker}" 2>/dev/null || true
-
-printf '{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":%s}}\n' "${escaped}"
+# Emit first, then mark the session as injected — only on successful write.
+# If printf fails (closed stdout, disk full, interrupted), leave the marker
+# absent so the next prompt in this session gets another chance to inject.
+if printf '{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":%s}}\n' "${escaped}"; then
+  : > "${marker}" 2>/dev/null || true
+fi

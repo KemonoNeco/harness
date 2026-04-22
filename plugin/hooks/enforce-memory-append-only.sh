@@ -20,8 +20,43 @@ allow() {
 input="$(cat || true)"
 [[ -z "${input}" ]] && allow
 
-tool_name="$(printf '%s' "${input}" | sed -n 's/.*"tool_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1)"
-file_path="$(printf '%s' "${input}" | sed -n 's/.*"file_path"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1)"
+# Parse the hook input via python (robust against escapes, multi-line values,
+# null fields, pretty-printed JSON). If python isn't available at all we can't
+# safely enforce; fall open.
+py=""
+if command -v python3 >/dev/null 2>&1; then
+  py="python3"
+elif command -v python >/dev/null 2>&1; then
+  py="python"
+else
+  allow
+fi
+
+# Extract tool_name, file_path, old_string in one pass. Missing / null values
+# become empty strings. Each field is base64-encoded on its own line so
+# newlines or control chars inside `old_string` never corrupt the framing.
+parsed="$(printf '%s' "${input}" | "${py}" -c '
+import json, sys, base64
+try:
+    d = json.load(sys.stdin)
+except Exception:
+    sys.exit(0)
+ti = d.get("tool_input") or {}
+def b(x):
+    return base64.b64encode((x or "").encode("utf-8")).decode("ascii")
+print(b(d.get("tool_name") or ""))
+print(b(ti.get("file_path") or ""))
+print(b(ti.get("old_string") or ""))
+' 2>/dev/null || true)"
+
+[[ -z "${parsed}" ]] && allow
+
+decode_line() {
+  printf '%s' "${parsed}" | awk -v n="$1" 'NR==n{print}' | base64 -d 2>/dev/null || true
+}
+tool_name="$(decode_line 1)"
+file_path="$(decode_line 2)"
+old_string="$(decode_line 3)"
 
 [[ -z "${tool_name:-}" ]] && allow
 [[ -z "${file_path:-}" ]] && allow
@@ -44,24 +79,8 @@ case "${file_path_fs}" in
 esac
 
 if [[ "${tool_name}" == "Edit" ]]; then
-  # Extract old_string. Use python for robust JSON parsing when available;
-  # fall back to a newline-tolerant sed for the common single-line case.
-  old_string=""
-  if command -v python3 >/dev/null 2>&1; then
-    old_string="$(printf '%s' "${input}" | python3 -c 'import json,sys;d=json.load(sys.stdin);print(d.get("tool_input",{}).get("old_string",""),end="")' 2>/dev/null || true)"
-  elif command -v python >/dev/null 2>&1; then
-    old_string="$(printf '%s' "${input}" | python -c 'import json,sys;d=json.load(sys.stdin);sys.stdout.write(d.get("tool_input",{}).get("old_string",""))' 2>/dev/null || true)"
-  fi
-
   if [[ "${old_string}" == *"<!-- id:"* ]]; then
     block "Harness: the memory contract is append-only. This Edit touches a past entry's metadata block (<!-- id: ... -->). Write a NEW entry with 'supersedes: <old-id>' in its metadata block instead. See HARNESS/memory/FORMAT.md §'Correcting a past entry'."
-  fi
-
-  # Even without python, if the existing file has ids and Edit would rewrite
-  # chunks containing them, block conservatively.
-  if [[ -z "${old_string}" && -f "${file_path_fs}" ]] && grep -q "^<!-- id:" "${file_path_fs}" 2>/dev/null; then
-    # We can't see old_string — fall open rather than block indiscriminately.
-    :
   fi
   allow
 fi
