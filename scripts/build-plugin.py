@@ -42,13 +42,32 @@ def validate_source() -> None:
         sys.exit(f"error: hooks config not found at {hooks_json}")
 
 
+TEXT_EXTENSIONS = {".md", ".sh", ".json", ".yml", ".yaml", ".txt"}
+
+
+def read_normalised(path: Path) -> bytes:
+    """Read a file and normalise line endings to LF if it's text.
+
+    The plugin has no binary assets today, but guard by extension anyway
+    so a future PNG/ICO doesn't get corrupted. Normalising on read makes
+    the archive deterministic regardless of how git checked out the
+    working tree — Windows autocrlf can't perturb the result.
+    """
+    raw = path.read_bytes()
+    if path.suffix.lower() in TEXT_EXTENSIONS:
+        # CRLF → LF, and a stray CR → LF (old Mac line endings). Idempotent.
+        raw = raw.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+    return raw
+
+
 def build_zip(out: Path) -> None:
     """Write a deterministic zip of plugin/ contents to `out`.
 
-    Deterministic means: same source bytes on disk → same archive bytes.
-    Achieved by (a) walking entries in sorted order, (b) fixing the
-    mtime of every entry to a constant, (c) writing files via
-    ZipInfo so mode bits don't vary with the host OS.
+    Deterministic means: same source bytes in git → same archive bytes.
+    Achieved by (a) walking entries in sorted order, (b) fixing the mtime
+    of every entry to a constant, (c) writing files via ZipInfo so mode
+    bits don't vary with the host OS, (d) normalising line endings to LF
+    on text files so Windows autocrlf checkouts can't perturb bytes.
     """
     CONST_TIME = (1980, 1, 1, 0, 0, 0)
     entries: list[tuple[str, Path]] = []
@@ -61,16 +80,15 @@ def build_zip(out: Path) -> None:
             entries.append((rel, abs_p))
     entries.sort(key=lambda t: t[0])
 
-    with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as zf:
+    with zipfile.ZipFile(out, "w", zipfile.ZIP_STORED) as zf:
         for rel, abs_p in entries:
             zi = zipfile.ZipInfo(filename=rel, date_time=CONST_TIME)
-            zi.compress_type = zipfile.ZIP_DEFLATED
+            zi.compress_type = zipfile.ZIP_STORED
             # Preserve executable bit for .sh hooks; else mode 0o644.
             zi.external_attr = (
                 (0o755 if rel.endswith(".sh") else 0o644) << 16
             )
-            with abs_p.open("rb") as fh:
-                zf.writestr(zi, fh.read())
+            zf.writestr(zi, read_normalised(abs_p))
 
 
 def main() -> int:
