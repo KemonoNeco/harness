@@ -17,3 +17,8 @@ Thumbs.db
 # Temp / scratch
 *.tmp
 *.bak
+
+# Plugin build artifacts (produced by packaging plugin/ for webapp upload)
+dist/
+*.plugin
+*.zip

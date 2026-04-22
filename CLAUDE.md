@@ -114,6 +114,35 @@ Plugin-scoped instructions live in [plugin/CLAUDE.md](plugin/CLAUDE.md). It's au
 
 The soul files are never regenerated or committed in derived form. Edit them freely; next session, the plugin picks up your changes.
 
+### Building for webapp upload
+
+The Claude webapp's plugin uploader only accepts `.plugin` or `.zip` archives — it can't ingest a bare directory. Use [scripts/build-plugin.py](scripts/build-plugin.py) to package [plugin/](plugin/) into both formats:
+
+```bash
+python scripts/build-plugin.py           # writes dist/harness.plugin + dist/harness.zip
+python scripts/build-plugin.py --clean   # removes dist/ first
+```
+
+Both files are byte-identical — the webapp treats `.plugin` and `.zip` the same; pick whichever extension your browser's file picker prefers. The archive layout puts `.claude-plugin/plugin.json` at the archive root (no `plugin/` wrapper directory), which is what both `claude plugin validate` and the webapp installer expect:
+
+```
+.claude-plugin/plugin.json
+CLAUDE.md
+hooks/hooks.json
+hooks/inject-soul.sh
+hooks/enforce-memory-append-only.sh
+skills/new-memory-entry/SKILL.md
+```
+
+`dist/`, `*.plugin`, and `*.zip` are gitignored — rebuild locally whenever the plugin sources change. For CLI installs (`claude plugin install ./plugin`) the build step isn't needed; it's only required for the webapp path.
+
+**Verify before uploading:**
+
+```bash
+claude plugin validate ./plugin          # validates the source; same contents go in the archive
+python -m zipfile -l dist/harness.plugin # lists archive contents
+```
+
 ## Reference material
 
 - [HARNESS_Research.md](HARNESS_Research.md) — full architectural design, every subsystem, every deferred decision explained.
