@@ -1,6 +1,6 @@
 # HARNESS — Soul-Driven Agent Framework (Prompt Layer)
 
-The soul files for a portable, Obsidian-native agent harness — working name **Golem**. These files are the system prompt: concatenated, scope-aware, markdown-native. Inspired by [OpenClaw](https://github.com/openclaw/openclaw), [IronClaw](https://github.com/nearai/ironclaw), and [pi-mono](https://github.com/badlogic/pi-mono). Full design in [../HARNESS_Research.md](../HARNESS_Research.md).
+The soul files for a portable, Obsidian-native agent harness. These files are the system prompt: concatenated, scope-aware, markdown-native. Inspired by [OpenClaw](https://github.com/openclaw/openclaw), [IronClaw](https://github.com/nearai/ironclaw), and [pi-mono](https://github.com/badlogic/pi-mono). Full design in [../HARNESS_Research.md](../HARNESS_Research.md).
 
 This repo currently ships **only the prompt framework** — no runtime, no daemon, no manifest. You fill in the user-authored files, concatenate them manually, and paste into Claude Code (or any model) as a custom system prompt. Everything else is future work.
 

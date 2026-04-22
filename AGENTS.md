@@ -60,6 +60,6 @@ Several architectural decisions are easy to undo by accident. Do not.
 
 ## Who does what today
 
-[CLAUDE.md](CLAUDE.md) at the repo root instructs Claude Code specifically — worktrees, verification commands, plugin install, git policy. [plugin/CLAUDE.md](plugin/CLAUDE.md) plus the plugin's `UserPromptSubmit` hook auto-inject the five-file soul bundle into every Claude Cowork session. This file — `AGENTS.md` — carries the same contract in prose for every other agent that does not read `CLAUDE.md` automatically.
+[CLAUDE.md](CLAUDE.md) at the repo root instructs Claude Code specifically — worktrees, verification commands, git policy. This file — `AGENTS.md` — carries the same contract in prose for every other agent that does not read `CLAUDE.md` automatically. Feed it as your system prompt and proceed.
 
-The planned single source of truth for load order is a `soul.toml` manifest with an assembler. It is not yet built. Until it ships, `CLAUDE.md` line 30, `plugin/hooks/inject-soul.sh` lines 76–81, and the ordered list in this file are three voicings of the same contract — they must stay in lockstep.
+The planned single source of truth for load order is a `soul.toml` manifest with an assembler. It is not yet built. Until it ships, the `cat` example in `CLAUDE.md` and the ordered list in this file are two voicings of the same contract — they must stay in lockstep.
