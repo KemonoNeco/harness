@@ -18,7 +18,8 @@ Thumbs.db
 *.tmp
 *.bak
 
-# Plugin build artifacts (produced by packaging plugin/ for webapp upload)
+# Plugin build artifacts — dist/ output is gitignored, but the published
+# archive at the repo root (harness.plugin) IS checked in so it can be
+# downloaded from GitHub directly and uploaded to the webapp without
+# cloning + building.
 dist/
-*.plugin
-*.zip

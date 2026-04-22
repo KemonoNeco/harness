@@ -1,0 +1,56 @@
+name: build-plugin
+
+on:
+  push:
+    branches: [main, prompt-framework-initial]
+    paths:
+      - "plugin/**"
+      - "scripts/build-plugin.py"
+      - ".github/workflows/build-plugin.yml"
+      - ".gitattributes"
+  pull_request:
+    paths:
+      - "plugin/**"
+      - "scripts/build-plugin.py"
+      - ".github/workflows/build-plugin.yml"
+      - ".gitattributes"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build .plugin archive
+        # The script writes dist/harness.{plugin,zip} AND overwrites the
+        # committed harness.plugin at the repo root. If the plugin/ sources
+        # have drifted from the checked-in archive, the next step's
+        # `git diff --exit-code` will flag it.
+        run: python scripts/build-plugin.py
+
+      - name: Verify committed harness.plugin is up to date
+        run: |
+          if ! git diff --exit-code -- harness.plugin; then
+            echo "::error file=harness.plugin::harness.plugin is stale relative to plugin/ sources. Run 'python scripts/build-plugin.py' locally and commit the result."
+            exit 1
+          fi
+
+      - name: Upload .plugin artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: harness-plugin
+          path: |
+            dist/harness.plugin
+            dist/harness.zip
+          if-no-files-found: error
+          retention-days: 90

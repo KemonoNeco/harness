@@ -116,14 +116,21 @@ The soul files are never regenerated or committed in derived form. Edit them fre
 
 ### Building for webapp upload
 
-The Claude webapp's plugin uploader only accepts `.plugin` or `.zip` archives — it can't ingest a bare directory. Use [scripts/build-plugin.py](scripts/build-plugin.py) to package [plugin/](plugin/) into both formats:
+The Claude webapp's plugin uploader only accepts `.plugin` or `.zip` archives — it can't ingest a bare directory. The ready-to-upload archive is **committed at the repo root as [harness.plugin](harness.plugin)**, so most users can just download that file from GitHub and upload it to the webapp without cloning or building anything.
+
+If you edit anything under [plugin/](plugin/), regenerate the archive:
 
 ```bash
-python scripts/build-plugin.py           # writes dist/harness.plugin + dist/harness.zip
-python scripts/build-plugin.py --clean   # removes dist/ first
+python scripts/build-plugin.py           # rebuilds harness.plugin + dist/harness.{plugin,zip}
+python scripts/build-plugin.py --clean   # also removes dist/ first
+python scripts/build-plugin.py --check   # compares committed vs freshly-built; exits 1 if stale
 ```
 
-Both files are byte-identical — the webapp treats `.plugin` and `.zip` the same; pick whichever extension your browser's file picker prefers. The archive layout puts `.claude-plugin/plugin.json` at the archive root (no `plugin/` wrapper directory), which is what both `claude plugin validate` and the webapp installer expect:
+Commit the updated `harness.plugin` alongside your plugin/ changes. [.github/workflows/build-plugin.yml](.github/workflows/build-plugin.yml) runs on every push and PR that touches `plugin/`, `scripts/build-plugin.py`, or `.gitattributes`, and **fails CI if `harness.plugin` is out of sync** — a `git diff --exit-code` against the freshly-built archive. CI also uploads `harness-plugin` as a workflow artifact (downloadable from the Actions tab for 90 days) so contributors without a Python toolchain can still grab a current build.
+
+The build is deterministic — identical source bytes produce byte-identical archives (sorted entries, fixed mtime `1980-01-01`, explicit 0755 mode on `.sh` hooks, 0644 elsewhere). That's why the freshness check works. [.gitattributes](.gitattributes) pins `plugin/**` to LF so Windows and Linux produce the same archive.
+
+Archive layout — `.claude-plugin/plugin.json` lives at the archive root, matching what `claude plugin validate` and the webapp installer expect:
 
 ```
 .claude-plugin/plugin.json
@@ -134,13 +141,13 @@ hooks/enforce-memory-append-only.sh
 skills/new-memory-entry/SKILL.md
 ```
 
-`dist/`, `*.plugin`, and `*.zip` are gitignored — rebuild locally whenever the plugin sources change. For CLI installs (`claude plugin install ./plugin`) the build step isn't needed; it's only required for the webapp path.
+For CLI installs (`claude plugin install ./plugin`) the build step isn't needed — it's only for the webapp path.
 
 **Verify before uploading:**
 
 ```bash
 claude plugin validate ./plugin          # validates the source; same contents go in the archive
-python -m zipfile -l dist/harness.plugin # lists archive contents
+python -m zipfile -l harness.plugin      # lists archive contents
 ```
 
 ## Reference material
